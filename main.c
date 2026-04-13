@@ -57,6 +57,28 @@ int main(int argc, char **argv) {
             if (event.type == SDL_QUIT) {
                 running = 0;
             }
+            if (event.type == SDL_KEYDOWN || event.type == SDL_KEYUP) {
+                uint8_t state = (event.type == SDL_KEYDOWN) ? 1 : 0;
+                switch (event.key.keysym.sym) {
+                    case SDLK_1: chip8.keypad[0x1] = state; break;
+                    case SDLK_2: chip8.keypad[0x2] = state; break;
+                    case SDLK_3: chip8.keypad[0x3] = state; break;
+                    case SDLK_4: chip8.keypad[0xC] = state; break;
+                    case SDLK_q: chip8.keypad[0x4] = state; break;
+                    case SDLK_w: chip8.keypad[0x5] = state; break;
+                    case SDLK_e: chip8.keypad[0x6] = state; break;
+                    case SDLK_r: chip8.keypad[0xD] = state; break;
+                    case SDLK_a: chip8.keypad[0x7] = state; break;
+                    case SDLK_s: chip8.keypad[0x8] = state; break;
+                    case SDLK_d: chip8.keypad[0x9] = state; break;
+                    case SDLK_f: chip8.keypad[0xE] = state; break;
+                    case SDLK_z: chip8.keypad[0xA] = state; break;
+                    case SDLK_x: chip8.keypad[0x0] = state; break;
+                    case SDLK_c: chip8.keypad[0xB] = state; break;
+                    case SDLK_v: chip8.keypad[0xF] = state; break;
+                    case SDLK_ESCAPE: running = 0; break;
+                }
+            }
         }
 
         chip8_cycle(&chip8);
@@ -81,7 +103,7 @@ int main(int argc, char **argv) {
         }
         SDL_RenderCopy(renderer, texture, NULL, NULL);
         SDL_RenderPresent(renderer);
-        SDL_Delay(2);
+        SDL_Delay(1);
     }
 
     SDL_DestroyTexture(texture);
