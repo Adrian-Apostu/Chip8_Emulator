@@ -1,6 +1,7 @@
 #include "chip8.h"
 #include <stdio.h>
 #include <string.h>
+#include <stdlib.h>
 
 static const uint8_t fontset[80] = {
     0xF0, 0x90, 0x90, 0x90, 0xF0,		// 0
@@ -64,33 +65,87 @@ void chip8_cycle(chip8_t *chip8) {
         case 0x0000:
             switch (opcode) {
                 case 0x00E0: memset(chip8->display, 0, sizeof(chip8->display)); break;
-                case 0x00EE: /* RET - return from subroutine */ break;
+                case 0x00EE: {
+                    chip8->sp--;
+                    chip8->pc = chip8->stack[chip8->sp];
+                    break;
+                }
             }
             break;
         case 0x1000: chip8->pc = nnn; break;
-        case 0x2000: /* CALL nnn - call subroutine */ break;
-        case 0x3000: /* SE Vx, nn - skip if Vx == nn */ break;
-        case 0x4000: /* SNE Vx, nn - skip if Vx != nn */ break;
-        case 0x5000: /* SE Vx, Vy - skip if Vx == Vy */ break;
+        case 0x2000: {
+            chip8->stack[chip8->sp] = chip8->pc;
+            chip8->sp++;
+            chip8->pc = nnn;
+            break;
+        }
+        case 0x3000: {
+            if (chip8->V[x] == nn) {
+                chip8->pc += 2;
+            }
+            break;
+        }
+        case 0x4000: {
+            if (chip8->V[x] != nn) {
+                chip8->pc += 2;
+            }
+            break;
+        }
+        case 0x5000: {
+            if (chip8->V[x] == chip8->V[y]) {
+                chip8->pc += 2;
+            }
+            break;
+        }
         case 0x6000: chip8->V[x] = nn; break;
         case 0x7000: chip8->V[x] += nn; break;
         case 0x8000:
             switch (opcode & 0x000F) {
-                case 0x0: /* LD Vx, Vy - Vx = Vy */ break;
-                case 0x1: /* OR Vx, Vy - Vx |= Vy */ break;
-                case 0x2: /* AND Vx, Vy - Vx &= Vy */ break;
-                case 0x3: /* XOR Vx, Vy - Vx ^= Vy */ break;
-                case 0x4: /* ADD Vx, Vy - Vx += Vy, VF = carry */ break;
-                case 0x5: /* SUB Vx, Vy - Vx -= Vy, VF = !borrow */ break;
-                case 0x6: /* SHR Vx - Vx >>= 1, VF = old bit 0 */ break;
-                case 0x7: /* SUBN Vx, Vy - Vx = Vy - Vx, VF = !borrow */ break;
-                case 0xE: /* SHL Vx - Vx <<= 1, VF = old bit 7 */ break;
+                case 0x0: chip8->V[x] = chip8->V[y]; break;
+                case 0x1: chip8->V[x] |= chip8->V[y]; break;
+                case 0x2: chip8->V[x] &= chip8->V[y]; break;
+                case 0x3: chip8->V[x] ^= chip8->V[y]; break;
+                case 0x4: {
+                    uint8_t flag = (chip8->V[x] + chip8->V[y]) > 255 ? 1 : 0;
+                    chip8->V[x] += chip8->V[y];
+                    chip8->V[0xF] = flag;
+                    break;
+                }
+                case 0x5: {
+                    uint8_t flag = chip8->V[x] >= chip8->V[y] ? 1 : 0;
+                    chip8->V[x] -= chip8->V[y];
+                    chip8->V[0xF] = flag;
+                    break;
+                }
+                case 0x6: {
+                    uint8_t flag = chip8->V[x] & 0x1;
+                    chip8->V[x] >>= 1;
+                    chip8->V[0xF] = flag;
+                    break;
+                }
+                case 0x7: {
+                    uint8_t flag = chip8->V[x] <= chip8->V[y] ? 1 : 0;
+                    chip8->V[x] = chip8->V[y] - chip8->V[x];
+                    chip8->V[0xF] = flag;
+                    break;
+                }
+                case 0xE: {
+                    uint8_t flag = (chip8->V[x] & 0x80) >> 7;
+                    chip8->V[x] <<= 1;
+                    chip8->V[0xF] = flag;
+                    break;
+                }
             }
             break;
-        case 0x9000: /* SNE Vx, Vy - skip if Vx != Vy */ break;
+        case 0x9000: {
+            if (chip8->V[x] != chip8->V[y]) {
+                chip8->pc += 2;
+            }
+            break;
+        }
         case 0xA000: chip8->I = nnn; break;
-        case 0xB000: /* JP V0, nnn - jump to nnn + V0 */ break;
-        case 0xC000: /* RND Vx, nn - Vx = random & nn */ break;
+        case 0xB000: chip8->pc = nnn + chip8->V[0]; break;
+        case 0xC000: chip8->V[x] = rand() & nn; break;
         case 0xD000: {
             int X = chip8->V[x] % 64;
             int Y = chip8->V[y] % 32;
