@@ -185,21 +185,50 @@ void chip8_cycle(chip8_t *chip8) {
         }
         case 0xE000:
             switch (opcode & 0x00FF) {
-                case 0x9E: /* SKP Vx - skip if key Vx pressed */ break;
-                case 0xA1: /* SKNP Vx - skip if key Vx not pressed */ break;
+            case 0x9E:
+                    if (chip8->keypad[chip8->V[x]]) chip8->pc += 2;
+                    break;
+            case 0xA1:
+                    if (!chip8->keypad[chip8->V[x]]) chip8->pc += 2;
+                    break;
             }
             break;
         case 0xF000:
             switch (opcode & 0x00FF) {
-                case 0x07: /* LD Vx, DT - Vx = delay_timer */ break;
-                case 0x0A: /* LD Vx, K - wait for key press */ break;
-                case 0x15: /* LD DT, Vx - delay_timer = Vx */ break;
-                case 0x18: /* LD ST, Vx - sound_timer = Vx */ break;
-                case 0x1E: /* ADD I, Vx - I += Vx */ break;
-                case 0x29: /* LD F, Vx - I = font address for Vx */ break;
-                case 0x33: /* BCD Vx - store BCD of Vx at I */ break;
-                case 0x55: /* LD [I], Vx - store V0..Vx at I */ break;
-                case 0x65: /* LD Vx, [I] - load V0..Vx from I */ break;
+            case 0x07: chip8->V[x] = chip8->delay_timer; break;
+            case 0x0A: {
+                bool key_pressed = false;
+                for (int i = 0; i < 16; i++) {
+                    if (chip8->keypad[i]) {
+                        chip8->V[x] = i;
+                        key_pressed = true;
+                        break;
+                    }
+                }
+                if (!key_pressed) {
+                    chip8->pc -= 2; // Re-run this instruction next cycle
+                }
+                break;
+            }
+            case 0x15: chip8->delay_timer = chip8->V[x]; break;
+            case 0x18: chip8->sound_timer = chip8->V[x]; break;
+            case 0x1E: chip8->I += chip8->V[x]; break;
+            case 0x29: chip8->I = 0x50 + (chip8->V[x] * 5); break;
+            case 0x33:
+                    chip8->memory[chip8->I]     = chip8->V[x] / 100;
+                    chip8->memory[chip8->I + 1] = (chip8->V[x] / 10) % 10;
+                    chip8->memory[chip8->I + 2] = chip8->V[x] % 10;
+                    break;
+            case 0x55:
+                    for (int i = 0; i <= x; i++) {
+                        chip8->memory[chip8->I + i] = chip8->V[i];
+                    }
+                    break;
+            case 0x65:
+                    for (int i = 0; i <= x; i++) {
+                        chip8->V[i] = chip8->memory[chip8->I + i];
+                    }
+                    break;
             }
             break;
         default:
